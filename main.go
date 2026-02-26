@@ -51,7 +51,7 @@ func main() {
 		return c.String(http.StatusOK, "ok")
 	})
 
-	if err := e.Start(":" + os.Getenv("PORT")); err != nil {
+	if err := e.Start(os.Getenv("PORT")); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }
