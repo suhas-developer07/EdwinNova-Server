@@ -43,7 +43,7 @@ func main() {
 		return c.String(http.StatusOK, "ok")
 	})
 
-	if err := e.Start(getEnv("HTTP_ADDR", ":8080")); err != nil {
+	if err := e.Start(os.Getenv("HTTP_ADDR")); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }
