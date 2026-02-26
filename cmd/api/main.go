@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,8 +8,8 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/suhas-developer07/EdwinNova-Server/internals/email"
+	"github.com/suhas-developer07/EdwinNova-Server/internals/infrastructure/mongo"
 
 	"github.com/suhas-developer07/EdwinNova-Server/internals/application"
 	"github.com/suhas-developer07/EdwinNova-Server/internals/infrastructure/rabbitmq"
@@ -22,22 +20,25 @@ func main() {
 	if err != nil {
 		log.Println("No .env file found")
 	}
-	mongoURI := getEnv("MONGO_URI", "mongodb+srv://suhas:Fordmustang1969@suhas.cbbha.mongodb.net/EdwinNova")
+
 	dbName := getEnv("MONGO_DB", "edwinnova")
 	uploadDir := getEnv("UPLOAD_DIR", "./uploads")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	/*Database Initialization */
+	client,err := mongo.InitMongo(mongo.Config{
+		URI: os.Getenv("MONGO_URI"),
+		MaxPoolSize: 50,
+		MinPoolSize: 5,
+		Timeout: 30*time.Second,
+	})
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
-	if err != nil {
-		log.Fatalf("failed to connect to mongo: %v", err)
+	if err != nil{
+		panic(err)
 	}
-	defer func() {
-		_ = client.Disconnect(context.Background())
-	}()
 
 	db := client.Database(dbName)
+
+	defer mongo.DisconnectMongo()
 
 	/* RabbitMq Initialization */
 	RabbitMQ_URI := os.Getenv("RABBITMQ_URI")
@@ -47,15 +48,23 @@ func main() {
 	if err != nil {
 		log.Fatalln("RabbitMq connection failed:Error",err)
 	}
+
+	defer rabbitmqConn.Close()
 	
-	defer rabbitmqConn.Conn.Close()
-	defer rabbitmqConn.Channel.Close()
+	queueName := "email_queue"
 
+	err = rabbitmqConn.DeclareQueue(queueName,true)
+	if err != nil{
+		log.Fatalf("failed to declare email queue:%v",err)
+	}
+
+	publisher := email.NewPublisher(rabbitmqConn, queueName)
+
+	
+	/* Internals */
 	repo := application.NewRepository(db)
-	svc := application.NewService(repo)
+	svc := application.NewService(repo,publisher)
 	handler := application.NewHandler(svc, uploadDir)
-
-	fmt.Println("Mongo url ", os.Getenv("MONGO_URI"))
 
 	e := echo.New()
 
