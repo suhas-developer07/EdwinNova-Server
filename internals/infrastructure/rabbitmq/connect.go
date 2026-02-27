@@ -25,7 +25,7 @@ func New(url string) (*Connection, error) {
 		return nil, fmt.Errorf("failed to open channel: %w", err)
 	}
 
-	fmt.Print("Connected to RabbitMQ")
+	fmt.Println("Connected to RabbitMQ")
 	return &Connection{
 		conn:    conn,
 		channel: ch,
@@ -52,6 +52,7 @@ func (r *Connection) DeclareQueue(name string, durable bool) error {
 
 func (r *Connection) Publish(ctx context.Context, queue string, body []byte) error {
 
+	fmt.Println("Publishing the message to rabbit mq")
 	err := r.channel.Publish(
 		"",    
 		queue,

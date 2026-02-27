@@ -3,6 +3,7 @@ package email
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/suhas-developer07/EdwinNova-Server/internals/infrastructure/mail"
@@ -30,7 +31,7 @@ func (w *Worker) Start(ctx context.Context) error {
 		return err
 	}
 
-	log.Println("Email worker started...")
+	fmt.Println("Email worker started...")
 
 	for msg := range msgs {
 
