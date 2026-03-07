@@ -4,27 +4,27 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
-	"os"
 	"path/filepath"
 	"regexp"
 	"time"
+
+	storage "github.com/suhas-developer07/EdwinNova-Server/internals/infrastructure/s3"
 
 	"github.com/labstack/echo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Handler struct {
-	service   Service
-	uploadDir string
+	service Service
+	storage *storage.S3Storage
 }
 
-func NewHandler(service Service, uploadDir string) *Handler {
+func NewHandler(service Service, storage *storage.S3Storage) *Handler {
 	return &Handler{
-		service:   service,
-		uploadDir: uploadDir,
+		service: service,
+		storage: storage,
 	}
 }
 
@@ -39,13 +39,15 @@ type createApplicationRequest struct {
 }
 
 type teammatePayload struct {
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
-	Github string `json:"github"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	Github    string `json:"github"`
+	Portfolio string `json:"portfolio"`
 }
 
 func (h *Handler) CreateApplication(c echo.Context) error {
+
 	ctx := c.Request().Context()
 
 	var req createApplicationRequest
@@ -62,47 +64,62 @@ func (h *Handler) CreateApplication(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid multipart form")
 	}
+
 	resumeFiles := form.File["resumes"]
 
 	if err := validateCreateApplicationRequest(&req, proposalFile, resumeFiles); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if err := os.MkdirAll(h.uploadDir, 0o755); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "could not prepare upload directory")
-	}
+	applicationID := primitive.NewObjectID().Hex()
 
-	proposalURL, err := h.savePDF(proposalFile, "proposals")
+	/* Upload proposal */
+	proposalKey := fmt.Sprintf("applications/%s/proposal.pdf", applicationID)
+
+	proposalURL, err := h.storage.UploadFile(ctx, proposalFile, proposalKey)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to store proposal pdf")
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to upload proposal")
 	}
 
+	/* Upload resumes */
 	var resumeURLs []string
-	for _, f := range resumeFiles {
-		url, err := h.savePDF(f, "resumes")
+
+	for i, f := range resumeFiles {
+
+		key := fmt.Sprintf(
+			"applications/%s/resume_%d.pdf",
+			applicationID,
+			i+1,
+		)
+
+		url, err := h.storage.UploadFile(ctx, f, key)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to store resume pdf")
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to upload resume")
 		}
+
 		resumeURLs = append(resumeURLs, url)
 	}
 
 	if len(resumeURLs) != len(req.Teammates) {
-		return echo.NewHTTPError(http.StatusBadRequest, "number of resumes must match number of teammates")
+		return echo.NewHTTPError(http.StatusBadRequest, "resumes must match teammates")
 	}
 
 	teammates := make([]Teammate, len(req.Teammates))
+
 	for i, t := range req.Teammates {
+
 		teammates[i] = Teammate{
 			Name:      t.Name,
 			Email:     t.Email,
 			Role:      t.Role,
 			ResumeURL: resumeURLs[i],
 			Github:    t.Github,
+			Portfolio: t.Portfolio,
 		}
 	}
 
 	app := &Application{
-		ApplicationID:   primitive.NewObjectID().Hex(),
+		ApplicationID:   applicationID,
 		TeamName:        req.TeamName,
 		PMName:          req.PMName,
 		PMEmail:         req.PMEmail,
@@ -112,8 +129,8 @@ func (h *Handler) CreateApplication(c echo.Context) error {
 		Teammates:       teammates,
 		ProposalPDFURL:  proposalURL,
 		Status:          "pending",
-		CreatedAt:       time.Time{},
-		UpdatedAt:       time.Time{},
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
 	}
 
 	if err := h.service.CreateApplication(ctx, app); err != nil {
@@ -123,12 +140,18 @@ func (h *Handler) CreateApplication(c echo.Context) error {
 	return c.JSON(http.StatusCreated, app)
 }
 
-func validateCreateApplicationRequest(req *createApplicationRequest, proposal *multipart.FileHeader, resumes []*multipart.FileHeader) error {
+func validateCreateApplicationRequest(
+	req *createApplicationRequest,
+	proposal *multipart.FileHeader,
+	resumes []*multipart.FileHeader,
+) error {
+
 	if req.TeamName == "" ||
 		req.PMName == "" ||
 		req.PMEmail == "" ||
 		req.PMContact == "" ||
 		req.Domain == "" {
+
 		return errors.New("missing required fields")
 	}
 
@@ -137,13 +160,15 @@ func validateCreateApplicationRequest(req *createApplicationRequest, proposal *m
 	}
 
 	if len(req.Teammates) == 0 {
-		return errors.New("at least one teammate is required")
+		return errors.New("at least one teammate required")
 	}
 
 	for _, t := range req.Teammates {
+
 		if t.Name == "" || t.Email == "" || t.Role == "" {
-			return errors.New("each teammate must have name, email and role")
+			return errors.New("each teammate must have name email role")
 		}
+
 		if !isValidEmail(t.Email) {
 			return errors.New("invalid teammate email")
 		}
@@ -152,6 +177,7 @@ func validateCreateApplicationRequest(req *createApplicationRequest, proposal *m
 	if err := validatePDFHeader(proposal); err != nil {
 		return err
 	}
+
 	for _, r := range resumes {
 		if err := validatePDFHeader(r); err != nil {
 			return err
@@ -161,49 +187,18 @@ func validateCreateApplicationRequest(req *createApplicationRequest, proposal *m
 	return nil
 }
 
-func isValidEmail(email string) bool {
-	re := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-	return re.MatchString(email)
-}
-
-func (h *Handler) savePDF(fileHeader *multipart.FileHeader, subdir string) (string, error) {
-	filename := filepath.Base(fileHeader.Filename)
-	ext := filepath.Ext(filename)
-	if ext != ".pdf" {
-		return "", errors.New("only pdf files are allowed")
-	}
-
-	targetDir := filepath.Join(h.uploadDir, subdir)
-	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		return "", err
-	}
-
-	newName := fmt.Sprintf("%s_%s", primitive.NewObjectID().Hex(), filename)
-	targetPath := filepath.Join(targetDir, newName)
-
-	src, err := fileHeader.Open()
-	if err != nil {
-		return "", err
-	}
-	defer src.Close()
-
-	dst, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
-	if err != nil {
-		return "", err
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, src); err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("/uploads/%s/%s", subdir, newName), nil
-}
-
 func validatePDFHeader(fileHeader *multipart.FileHeader) error {
-	filename := fileHeader.Filename
-	if filepath.Ext(filename) != ".pdf" {
-		return errors.New("file must be a pdf")
+
+	if filepath.Ext(fileHeader.Filename) != ".pdf" {
+		return errors.New("file must be pdf")
 	}
+
 	return nil
+}
+
+func isValidEmail(email string) bool {
+
+	re := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+	return re.MatchString(email)
 }

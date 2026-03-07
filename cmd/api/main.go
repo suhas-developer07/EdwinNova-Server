@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo"
@@ -13,18 +17,19 @@ import (
 	"github.com/suhas-developer07/EdwinNova-Server/internals/application"
 	"github.com/suhas-developer07/EdwinNova-Server/internals/infrastructure/mail"
 	"github.com/suhas-developer07/EdwinNova-Server/internals/infrastructure/mongo"
+	storage "github.com/suhas-developer07/EdwinNova-Server/internals/infrastructure/s3"
 )
 
 func main() {
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("No .env file found")
 	}
 
 	dbName := getEnv("MONGO_DB", "edwinnova")
-	uploadDir := getEnv("UPLOAD_DIR", "./uploads")
 
-	/* Database Initialization */
+	/* MongoDB */
 	client, err := mongo.InitMongo(mongo.Config{
 		URI:         os.Getenv("MONGO_URI"),
 		MaxPoolSize: 50,
@@ -38,18 +43,34 @@ func main() {
 	db := client.Database(dbName)
 	defer mongo.DisconnectMongo()
 
-	/* SMTP Initialization */
+	/* SMTP */
 	smtpClient, err := mail.NewSMTPClient()
 	if err != nil {
 		log.Fatalln("Failed to initialize SMTP client:", err)
 	}
 
+	/* AWS Config */
+	cfg, err := awsconfig.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("AWS region:", cfg.Region)
+
+	s3Client := awss3.NewFromConfig(cfg)
+
+	s3Storage := storage.NewS3Storage(
+		s3Client,
+		os.Getenv("FILES_BUCKET"),
+	)
+
 	/* Internals */
 	repo := application.NewRepository(db)
 	svc := application.NewService(repo, smtpClient)
-	handler := application.NewHandler(svc, uploadDir)
 
-	/* Echo Initialization */
+	handler := application.NewHandler(svc, s3Storage)
+
+	/* Echo */
 	e := echo.New()
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
