@@ -61,7 +61,7 @@ func main() {
 
 	s3Storage := storage.NewS3Storage(
 		s3Client,
-		os.Getenv("FILES_BUCKET"),
+		os.Getenv("BUCKET_NAME"),
 	)
 
 	/* Internals */
