@@ -50,7 +50,9 @@ func main() {
 	}
 
 	/* AWS Config */
-	cfg, err := awsconfig.LoadDefaultConfig(context.Background())
+	cfg, err := awsconfig.LoadDefaultConfig(
+		context.TODO(),
+		awsconfig.WithRegion(os.Getenv("AWS_REGION")))
 	if err != nil {
 		log.Fatal(err)
 	}
