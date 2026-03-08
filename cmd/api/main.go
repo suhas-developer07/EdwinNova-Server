@@ -8,6 +8,7 @@ import (
 	"time"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/joho/godotenv"
@@ -50,9 +51,20 @@ func main() {
 	}
 
 	/* AWS Config */
+	log.Println("AWS_ACCESS_KEY_ID:", os.Getenv("AWS_ACCESS_KEY_ID"))
+	log.Println("AWS_SECRET_ACCESS_KEY:", os.Getenv("AWS_SECRET_ACCESS_KEY"))
+	log.Println("AWS_REGION:", os.Getenv("AWS_REGION"))
 	cfg, err := awsconfig.LoadDefaultConfig(
 		context.TODO(),
-		awsconfig.WithRegion(os.Getenv("AWS_REGION")))
+		awsconfig.WithRegion(os.Getenv("AWS_REGION")),
+		awsconfig.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(
+				os.Getenv("AWS_ACCESS_KEY_ID"),
+				os.Getenv("AWS_SECRET_ACCESS_KEY"),
+				"",
+			),
+		),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

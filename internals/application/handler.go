@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -54,6 +55,8 @@ func (h *Handler) CreateApplication(c echo.Context) error {
 	if err := json.Unmarshal([]byte(c.FormValue("payload")), &req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid payload json")
 	}
+
+	log.Printf("Received application creation request for team %s with PM %s", req.TeamName, req.PMEmail)
 
 	proposalFile, err := c.FormFile("proposal")
 	if err != nil {
