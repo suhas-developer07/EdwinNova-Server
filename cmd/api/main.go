@@ -47,7 +47,7 @@ func main() {
 	/* SMTP */
 	smtpClient, err := mail.NewSMTPClient()
 	if err != nil {
-		log.Fatalln("Failed to initialize SMTP client:", err)
+		log.Fatalln("Failed to  initialize SMTP client:", err)
 	}
 
 	/* AWS Config */
