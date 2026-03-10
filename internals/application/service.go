@@ -5,7 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/suhas-developer07/EdwinNova-Server/internals/email"
 	"github.com/suhas-developer07/EdwinNova-Server/internals/infrastructure/mail"
 )
 
@@ -13,20 +12,16 @@ type Service interface {
 	CreateApplication(ctx context.Context, app *Application) error
 }
 
-// type EmailPublisher interface {
-// 	Publish(ctx context.Context, job email.EmailJob) error
-// }
-	
 type service struct {
-	repo      Repository
+	repo Repository
 	// publisher EmailPublisher
-	smtp      *mail.SMTPClient
+	smtp *mail.ResendClient
 }
 
-func NewService(repo Repository, smtp *mail.SMTPClient) Service {
+func NewService(repo Repository, smtp *mail.ResendClient) Service {
 	return &service{
-		repo:      repo,
-		smtp:      smtp,
+		repo: repo,
+		smtp: smtp,
 	}
 }
 
@@ -43,16 +38,16 @@ func (s *service) CreateApplication(ctx context.Context, app *Application) error
 
 	log.Printf("Application created for team %s with PM %s", app.TeamName, app.PMEmail)
 
-	emailBody,err := email.BuildRegistrationEmailBody(app.TeamName,app.PMName,app.PMEmail,app.PMContact,app.ApplicationID,app.CreatedAt)
+	emailBody, err := mail.BuildRegistrationEmailBody(app.TeamName, app.PMName, app.PMEmail, app.PMContact, app.ApplicationID, app.CreatedAt)
 	if err != nil {
 		log.Printf("Failed to build registration email body for team %s: %v", app.TeamName, err)
 		return err
 	}
-	log.Printf("Built registration email body for team %s", app.TeamName)
-	err = s.smtp.Send(app.PMEmail,"Your Hackothon registration is successfull",emailBody)
+	err = s.smtp.Send(app.PMEmail, "Your Hackothon registration is successfull", emailBody)
 	if err != nil {
 		log.Printf("Failed to send registration email to %s: %v", app.PMEmail, err)
 		return err
 	}
+	log.Printf("Sent registration email to %s for team %s", app.PMEmail, app.TeamName)
 	return nil
 }

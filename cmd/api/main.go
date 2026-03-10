@@ -45,9 +45,9 @@ func main() {
 	defer mongo.DisconnectMongo()
 
 	/* SMTP */
-	smtpClient, err := mail.NewSMTPClient()
+	smtpClient, err := mail.NewResendClient()
 	if err != nil {
-		log.Fatalln("Failed to  initialize SMTP client:", err)
+		log.Fatalln("Failed to  initialize resend email client:", err)
 	}
 
 	/* AWS Config */
