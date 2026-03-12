@@ -106,8 +106,9 @@ func main() {
 	}))
 
 	e.POST("/applications", handler.CreateApplication)
-	e.GET("/applications/export/excel",handler.ExportApplications)
+	e.GET("/applications/export/excel", handler.ExportApplications)
 	e.GET("/applications/export/csv", handler.ExportApplicationsCSV)
+	e.GET("/applications", handler.GetAllApplications)
 
 	e.GET("/healthz", func(c echo.Context) error {
 		return c.String(http.StatusOK, "ok")
