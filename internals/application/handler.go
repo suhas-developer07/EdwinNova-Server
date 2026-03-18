@@ -43,8 +43,6 @@ type teammatePayload struct {
 	Name      string `json:"name"`
 	Email     string `json:"email"`
 	Role      string `json:"role"`
-	Github    string `json:"github"`
-	Portfolio string `json:"portfolio"`
 }
 
 func (h *Handler) CreateApplication(c echo.Context) error {
@@ -63,14 +61,8 @@ func (h *Handler) CreateApplication(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "proposal pdf is required")
 	}
 
-	form, err := c.MultipartForm()
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid multipart form")
-	}
 
-	resumeFiles := form.File["resumes"]
-
-	if err := validateCreateApplicationRequest(&req, proposalFile, resumeFiles); err != nil {
+	if err := validateCreateApplicationRequest(&req, proposalFile); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
@@ -84,29 +76,6 @@ func (h *Handler) CreateApplication(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	/* Upload resumes */
-	var resumeURLs []string
-
-	for i, f := range resumeFiles {
-
-		key := fmt.Sprintf(
-			"applications/%s/resume_%d.pdf",
-			applicationID,
-			i+1,
-		)
-
-		url, err := h.storage.UploadFile(ctx, f, key)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to upload resume")
-		}
-
-		resumeURLs = append(resumeURLs, url)
-	}
-
-	if len(resumeURLs) != len(req.Teammates) {
-		return echo.NewHTTPError(http.StatusBadRequest, "resumes must match teammates")
-	}
-
 	teammates := make([]Teammate, len(req.Teammates))
 
 	for i, t := range req.Teammates {
@@ -115,9 +84,6 @@ func (h *Handler) CreateApplication(c echo.Context) error {
 			Name:      t.Name,
 			Email:     t.Email,
 			Role:      t.Role,
-			ResumeURL: resumeURLs[i],
-			Github:    t.Github,
-			Portfolio: t.Portfolio,
 		}
 	}
 
@@ -203,7 +169,6 @@ func (h *Handler) GetAllApplications(c echo.Context)error{
 func validateCreateApplicationRequest(
 	req *createApplicationRequest,
 	proposal *multipart.FileHeader,
-	resumes []*multipart.FileHeader,
 ) error {
 
 	if req.TeamName == "" ||
@@ -236,12 +201,6 @@ func validateCreateApplicationRequest(
 
 	if err := validatePDFHeader(proposal); err != nil {
 		return err
-	}
-
-	for _, r := range resumes {
-		if err := validatePDFHeader(r); err != nil {
-			return err
-		}
 	}
 
 	return nil

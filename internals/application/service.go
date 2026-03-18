@@ -82,9 +82,6 @@ func (s *service) ExportApplications(ctx context.Context) ([]byte, error) {
 		"TeammateName",
 		"TeammateEmail",
 		"Role",
-		"ResumeURL",
-		"Portfolio",
-		"Github",
 	}
 
 	for i, h := range headers {
@@ -127,9 +124,6 @@ func (s *service) ExportApplications(ctx context.Context) ([]byte, error) {
 			file.SetCellValue(sheet, fmt.Sprintf("J%d", row), member.Name)
 			file.SetCellValue(sheet, fmt.Sprintf("K%d", row), member.Email)
 			file.SetCellValue(sheet, fmt.Sprintf("L%d", row), member.Role)
-			file.SetCellValue(sheet, fmt.Sprintf("M%d", row), member.ResumeURL)
-			file.SetCellValue(sheet, fmt.Sprintf("N%d", row), member.Portfolio)
-			file.SetCellValue(sheet, fmt.Sprintf("O%d", row), member.Github)
 
 			row++
 		}
@@ -167,9 +161,6 @@ func (s *service) ExportApplicationsCSV(ctx context.Context) ([]byte, error) {
 		"TeammateName",
 		"TeammateEmail",
 		"Role",
-		"ResumeURL",
-		"Portfolio",
-		"Github",
 	}
 
 	writer.Write(header)
@@ -215,9 +206,6 @@ func (s *service) ExportApplicationsCSV(ctx context.Context) ([]byte, error) {
 				member.Name,
 				member.Email,
 				member.Role,
-				member.ResumeURL,
-				member.Portfolio,
-				member.Github,
 			}
 
 			writer.Write(row)

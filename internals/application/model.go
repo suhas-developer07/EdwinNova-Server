@@ -23,7 +23,4 @@ type Teammate struct {
 	Name      string `bson:"name" json:"name"`
 	Email     string `bson:"email" json:"email"`
 	Role      string `bson:"role" json:"role"`
-	ResumeURL string `bson:"resume_url" json:"resume_url"`
-	Portfolio string `bson:"portfolio,omitempty" json:"portfolio,omitempty"`
-	Github    string `bson:"github,omitempty" json:"github,omitempty"`
 }
