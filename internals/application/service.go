@@ -123,7 +123,6 @@ func (s *service) ExportApplications(ctx context.Context) ([]byte, error) {
 
 			file.SetCellValue(sheet, fmt.Sprintf("J%d", row), member.Name)
 			file.SetCellValue(sheet, fmt.Sprintf("K%d", row), member.Email)
-			file.SetCellValue(sheet, fmt.Sprintf("L%d", row), member.Role)
 
 			row++
 		}
@@ -205,7 +204,6 @@ func (s *service) ExportApplicationsCSV(ctx context.Context) ([]byte, error) {
 				app.ProposalPDFURL,
 				member.Name,
 				member.Email,
-				member.Role,
 			}
 
 			writer.Write(row)

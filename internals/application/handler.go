@@ -42,7 +42,6 @@ type createApplicationRequest struct {
 type teammatePayload struct {
 	Name      string `json:"name"`
 	Email     string `json:"email"`
-	Role      string `json:"role"`
 }
 
 func (h *Handler) CreateApplication(c echo.Context) error {
@@ -83,7 +82,6 @@ func (h *Handler) CreateApplication(c echo.Context) error {
 		teammates[i] = Teammate{
 			Name:      t.Name,
 			Email:     t.Email,
-			Role:      t.Role,
 		}
 	}
 
@@ -190,8 +188,8 @@ func validateCreateApplicationRequest(
 
 	for _, t := range req.Teammates {
 
-		if t.Name == "" || t.Email == "" || t.Role == "" {
-			return errors.New("each teammate must have name email role")
+		if t.Name == "" || t.Email == ""{
+			return errors.New("each teammate must have name email.")
 		}
 
 		if !isValidEmail(t.Email) {
