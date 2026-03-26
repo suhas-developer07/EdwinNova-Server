@@ -45,66 +45,9 @@ type teammatePayload struct {
 }
 
 func (h *Handler) CreateApplication(c echo.Context) error {
-
-	ctx := c.Request().Context()
-
-	var req createApplicationRequest
-	if err := json.Unmarshal([]byte(c.FormValue("payload")), &req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid payload json")
-	}
-
-	log.Printf("Received application creation request for team %s with PM %s", req.TeamName, req.PMEmail)
-
-	proposalFile, err := c.FormFile("proposal")
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "proposal pdf is required")
-	}
-
-
-	if err := validateCreateApplicationRequest(&req, proposalFile); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	applicationID := primitive.NewObjectID().Hex()
-
-	/* Upload proposal */
-	proposalKey := fmt.Sprintf("applications/%s/proposal.pdf", applicationID)
-
-	proposalURL, err := h.storage.UploadFile(ctx, proposalFile, proposalKey)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	teammates := make([]Teammate, len(req.Teammates))
-
-	for i, t := range req.Teammates {
-
-		teammates[i] = Teammate{
-			Name:      t.Name,
-			Email:     t.Email,
-		}
-	}
-
-	app := &Application{
-		ApplicationID:   applicationID,
-		TeamName:        req.TeamName,
-		PMName:          req.PMName,
-		PMEmail:         req.PMEmail,
-		PMContact:       req.PMContact,
-		AlternateNumber: req.AlternateNumber,
-		Domain:          req.Domain,
-		Teammates:       teammates,
-		ProposalPDFURL:  proposalURL,
-		Status:          "pending",
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
-	}
-
-	if err := h.service.CreateApplication(ctx, app); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create application")
-	}
-
-	return c.JSON(http.StatusCreated, app)
+	return c.JSON(http.StatusOK,map[string]string{
+		"message":"Applications are Closed,No longer getting accecpted",
+	})	
 }
 
 func (h *Handler) ExportApplications(c echo.Context) error {
