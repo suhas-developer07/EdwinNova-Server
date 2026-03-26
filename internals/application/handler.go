@@ -1,20 +1,12 @@
 package application
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"log"
-	"mime/multipart"
 	"net/http"
-	"path/filepath"
-	"regexp"
-	"time"
 
 	storage "github.com/suhas-developer07/EdwinNova-Server/internals/infrastructure/s3"
 
 	"github.com/labstack/echo"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	
 )
 
 type Handler struct {
@@ -29,15 +21,15 @@ func NewHandler(service Service, storage *storage.S3Storage) *Handler {
 	}
 }
 
-type createApplicationRequest struct {
-	TeamName        string            `json:"team_name"`
-	PMName          string            `json:"pm_name"`
-	PMEmail         string            `json:"pm_email"`
-	PMContact       string            `json:"pm_contact"`
-	AlternateNumber string            `json:"alternate_number"`
-	Domain          string            `json:"domain"`
-	Teammates       []teammatePayload `json:"teammates"`
-}
+// type createApplicationRequest struct {
+// 	TeamName        string            `json:"team_name"`
+// 	PMName          string            `json:"pm_name"`
+// 	PMEmail         string            `json:"pm_email"`
+// 	PMContact       string            `json:"pm_contact"`
+// 	AlternateNumber string            `json:"alternate_number"`
+// 	Domain          string            `json:"domain"`
+// 	Teammates       []teammatePayload `json:"teammates"`
+// }
 
 type teammatePayload struct {
 	Name      string `json:"name"`
@@ -107,58 +99,58 @@ func (h *Handler) GetAllApplications(c echo.Context)error{
 	return c.JSON(http.StatusOK, apps)
 }
 
-func validateCreateApplicationRequest(
-	req *createApplicationRequest,
-	proposal *multipart.FileHeader,
-) error {
+// func validateCreateApplicationRequest(
+// 	req *createApplicationRequest,
+// 	proposal *multipart.FileHeader,
+// ) error {
 
-	if req.TeamName == "" ||
-		req.PMName == "" ||
-		req.PMEmail == "" ||
-		req.PMContact == "" ||
-		req.Domain == "" {
+// 	if req.TeamName == "" ||
+// 		req.PMName == "" ||
+// 		req.PMEmail == "" ||
+// 		req.PMContact == "" ||
+// 		req.Domain == "" {
 
-		return errors.New("missing required fields")
-	}
+// 		return errors.New("missing required fields")
+// 	}
 
-	if !isValidEmail(req.PMEmail) {
-		return errors.New("invalid pm_email")
-	}
+// 	if !isValidEmail(req.PMEmail) {
+// 		return errors.New("invalid pm_email")
+// 	}
 
-	if len(req.Teammates) == 0 {
-		return errors.New("at least one teammate required")
-	}
+// 	if len(req.Teammates) == 0 {
+// 		return errors.New("at least one teammate required")
+// 	}
 
-	for _, t := range req.Teammates {
+// 	for _, t := range req.Teammates {
 
-		if t.Name == "" || t.Email == ""{
-			return errors.New("each teammate must have name email.")
-		}
+// 		if t.Name == "" || t.Email == ""{
+// 			return errors.New("each teammate must have name email.")
+// 		}
 
-		if !isValidEmail(t.Email) {
-			return errors.New("invalid teammate email")
-		}
-	}
+// 		if !isValidEmail(t.Email) {
+// 			return errors.New("invalid teammate email")
+// 		}
+// 	}
 
-	if err := validatePDFHeader(proposal); err != nil {
-		return err
-	}
+// 	if err := validatePDFHeader(proposal); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func validatePDFHeader(fileHeader *multipart.FileHeader) error {
+// func validatePDFHeader(fileHeader *multipart.FileHeader) error {
 
-	if filepath.Ext(fileHeader.Filename) != ".pdf" {
-		return errors.New("file must be pdf")
-	}
+// 	if filepath.Ext(fileHeader.Filename) != ".pdf" {
+// 		return errors.New("file must be pdf")
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func isValidEmail(email string) bool {
+// func isValidEmail(email string) bool {
 
-	re := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+// 	re := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
-	return re.MatchString(email)
-}
+// 	return re.MatchString(email)
+// }
